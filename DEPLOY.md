@@ -4,42 +4,30 @@
 
 ## 当前状态（我已经做完的）
 
-- Git 仓库已初始化，主分支 `main`，首次提交 `6938f88`
-- 远程地址已配好：`https://github.com/abwr1025/boardgame-tools.git`
-- 本机已有 GitHub 登录凭据（`abwr1025`），推送时大概率不用重新登录
+- Git 仓库已初始化，主分支 `main`
+- **GitHub 仓库已创建并推送完成**：<https://github.com/abwr1025/boardgame-tools>（公开，32 个文件）
+- 本机 GitHub 凭据（`abwr1025`）可用，之后 push 不会再问密码
 - 构建验证通过：`npm run build` → 81 个页面预渲染成功
 - 打包好的静态站：`dist-netlify-drop.zip`（路线 B 直接用它）
 
-剩下的事必须你亲自点网页，下面是照着抄的步骤。
+**只剩第 3 步（Vercel 导入）和第 4 步（回填域名）要做。**
 
 ---
 
-## 第 1 步 · 创建 GitHub 仓库（约 1 分钟）
+## 第 1、2 步 · 建仓库 + 推送 ✅ 已完成
 
-1. 浏览器打开 <https://github.com/new>
-2. **Repository name** 填 `boardgame-tools`
-3. 选 **Public**（私有也行，Vercel 免费版两种都支持）
-4. **下面三个勾全部不要勾**：Add a README file / Add .gitignore / Choose a license
-   - 勾了会在远端先产生一个提交，push 时被拒绝，还要多一步 merge
-5. 点绿色 **Create repository**
-6. 跳转后的页面上会显示一堆命令 —— **不用管，别复制**，本地已经配好了
+仓库在 <https://github.com/abwr1025/boardgame-tools>，32 个文件，`main` 分支与本地完全同步。
 
-## 第 2 步 · 推送（约 1 分钟）
-
-Win+X → 打开「终端」，粘贴：
+以后你自己改了代码要推上去，只需要：
 
 ```powershell
 cd D:\CodexProjects\boardgame-tools
-git push -u origin main
+git add -A
+git commit -m "说明这次改了什么"
+git push
 ```
 
-- 如果弹出 Git Credential Manager 窗口 → 选 **Sign in with your browser** → 授权
-- 凭据还有效的话会直接推送，什么都不用点
-- 看到 `branch 'main' set up to track 'origin/main'` 就成了
-
-刷新 GitHub 页面，应该能看到 31 个文件。
-
-> 报 `! [rejected] ... fetch first`：说明第 1 步勾了 README。先 `git pull --rebase origin main`，再 `git push -u origin main`。
+---
 
 ## 第 3 步 · Vercel 导入（约 2 分钟）
 
