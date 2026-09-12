@@ -77,8 +77,6 @@ Cloudflare 新版控制台默认把人引导到 **Workers** 而不是 Pages—�
 
 ## 已完成 · 建仓库 + 推送
 
-## 已完成 · 建仓库 + 推送
-
 仓库在 <https://github.com/abwr1025/boardgame-tools>，32 个文件，`main` 分支与本地完全同步。
 
 以后你自己改了代码要推上去，只需要：
@@ -320,26 +318,17 @@ C 盘只保留 `C:\Users\16007\.codex\AGENTS.md`（Codex 的配置文件，路�
 
 ---
 
-## 以后怎么更新
-
-```powershell
-cd D:\CodexProjects\boardgame-tools
-# 改代码 / 加游戏
-npm run build     # 本地先确认没报错
-git add -A
-git commit -m "feat: 加了 5 款新游戏"
-git push
-```
-
-Vercel 自动重新部署，1 分钟后线上就更新。
-
----
-
 ## 想要自定义域名
 
-Vercel 免费版支持绑自己的域名：Project → Settings → Domains → Add。
-买好域名（Cloudflare / Namecheap / 阿里云都行）后按提示改 DNS 解析。
-**注意**：国内域名解析到 Vercel，国内访问速度可能不稳定，建议先用默认的 `.vercel.app` 域名跑通。
+现在跑在 `boardgame-tools.1600727279.workers.dev` 上。这个域名**在国内访问不稳定**，
+想认真做站就绑一个自己的域名：
+
+1. 买域名（Cloudflare 自己卖，Namecheap、阿里云也行）
+2. Cloudflare 控制台 → 你的 Worker → **Settings → Domains & Routes → Add → Custom domain**
+3. 按提示改 DNS 解析，HTTPS 证书 Cloudflare 自动签
+
+**建议顺序**：先用 `workers.dev` 把内容和数据打磨好，等确实有人访问了再花钱买域名。
+域名一年几十块不贵，但在你还没有流量之前，它不会带来任何变化。
 
 ---
 
