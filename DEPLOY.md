@@ -98,6 +98,9 @@ https://xxx.vercel.app           ← 全世界可访问
 > 国内小团队常见做法是改用 **Cloudflare Pages**——免费版允许商业用途，且不限带宽。
 > 迁移成本很低：构建命令和输出目录填一样的，代码一行不用改。
 > 所以先用 Vercel 跑通，等真要收钱了再迁，不亏。
+>
+> **注册时卡在手机验证码收不到？** 见下面的「路线 A′ · Cloudflare Pages」。
+> Vercel 的短信走国际通道，+86 号码经常收不到，别在那上面耗时间。
 
 ---
 
@@ -123,6 +126,60 @@ Vercel 自动重新部署，这次会多生成 `sitemap.xml` 和 canonical 标�
 验证：打开 `https://你的域名/sitemap.xml`，能看到 81 条 URL 就对了。
 
 > 为什么不能留空？canonical 指向不存在的域名会被搜索引擎判为无效信号，比不写更糟。
+
+---
+
+## 路线 A′ · Cloudflare Pages（Vercel 卡住时用这个）
+
+### 什么时候该用它
+
+- 注册 Vercel 时卡在手机短信验证码。`+86` 号码收境外短信到达率很差，很可能是收不到的
+- 以后要在站上挂广告、卖会员。Vercel 免费版条款不允许商业用途，Cloudflare Pages 免费版允许，且不限带宽
+
+### 步骤
+
+**① 注册 / 登录**
+
+打开 <https://dash.cloudflare.com/sign-up>，用邮箱注册，或直接 **Sign up with GitHub**。
+**不需要手机号，没有短信验证。**
+
+**② 连 GitHub 仓库**
+
+控制台左侧 **Workers & Pages** → **Create** → 选 **Pages** 标签 → **Connect to Git**
+→ 授权 GitHub → 选中 `boardgame-tools` → **Begin setup**
+
+**③ 填构建配置**
+
+| 字段 | 填什么 |
+| --- | --- |
+| Project name | `boardgame-tools`，决定域名 `xxx.pages.dev` |
+| Production branch | `main` |
+| Framework preset | `Vite` |
+| Build command | `npm run build` |
+| Build output directory | `dist` |
+
+**④ 加一个环境变量（容易漏，漏了可能构建失败）**
+
+展开 **Environment variables (advanced)**，加一条：
+
+| Variable name | Value |
+| --- | --- |
+| `NODE_VERSION` | `22` |
+
+Cloudflare 的默认 Node 版本可能比项目要求的低。`package.json` 里写了 engines node 22.x，
+这里对齐一下，省得云端报 Node 版本不符。
+
+**⑤ 点 Save and Deploy**
+
+等 1—2 分钟，看构建日志。成功后拿到 `https://boardgame-tools.pages.dev`。
+
+之后每次 `git push` 都会自动重新部署，和 Vercel 一样。
+
+### 和 Vercel 的差别
+
+- 不要手机号，注册门槛低
+- 免费版允许商业用途，不限带宽，国内访问速度通常也比 Vercel 好一些
+- 自定义域名同样免费，在 **Custom domains** 里加
 
 ---
 
