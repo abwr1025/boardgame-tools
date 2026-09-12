@@ -1,201 +1,169 @@
 # 今晚玩什么 · 桌游推荐器
 
-按 **人数 / 可用时长 / 玩家熟练度 / 想玩的类型** 从中文桌游库里挑出今晚合适的游戏。
-纯前端，无后端，无数据库。每款游戏都有独立的静态详情页，方便被搜索引擎收录。
+线上地址：<https://boardgame-tools.1600727279.workers.dev>
+
+按 **人数 / 可用时长 / 玩家熟练度 / 想玩的类型**，从中文桌游库里挑出今晚合适的游戏。
+
+纯前端静态站，无后端、无数据库。全部 81 个页面（1 个首页 + 80 个游戏详情页）在构建时预渲染为静态 HTML，不依赖客户端 JS 执行，便于搜索引擎收录。
 
 ## 快速开始
 
-**最简单：双击 `start-dev.bat`**，等几秒，手动打开 http://localhost:5173/
-
-注意：**那个黑窗口不能关**。关掉它服务器就停了，浏览器会报 `ERR_CONNECTION_REFUSED`。
-要停止服务器就按 `Ctrl+C`，或直接关掉窗口。
-
-**或者用命令行：**
+需要 Node.js 20.19 或更高版本。
 
 ```bash
-cd D:\CodexProjects\boardgame-tools
+npm install      # 首次
 npm run dev      # 开发服务器 http://localhost:5173/
 npm run build    # 构建 + 预渲染，产物在 dist/
 npm run preview  # 预览构建产物
-npm run lint
+npm run lint     # ESLint
 ```
+
+Windows 下可直接双击 `start-dev.bat` 启动开发服务器。**启动后不要关闭那个命令行窗口**，关闭即停止服务，浏览器会报 `ERR_CONNECTION_REFUSED`。
+
+> 若开发机启用了 Windows 智能应用控制，请不要执行 `npm install`，详见文末「开发环境约束」。
 
 ## 页面结构
 
 | 路径 | 内容 |
 | --- | --- |
-| `/` | 推荐器 + 中文桌游库 |
+| `/` | 推荐器 + 可搜索的中文桌游库 |
 | `/game/<id>` | 单款游戏详情页，共 80 个 |
 | 其他 | 404 页面 |
 
-路由是零依赖自己写的（`src/lib/router.tsx`），没用 react-router。
+路由是约 60 行的零依赖实现（`src/lib/router.tsx`），没有引入 react-router。
 
-## 构建时预渲染（重要）
+## 构建与预渲染
 
-纯前端 SPA 对 SEO 几乎没用——搜索引擎打开页面时正文是空的。所以 `npm run build`
-最后会跑 `scripts/prerender.mjs`，用 `react-dom/server` 把每个页面渲染成**真正的静态 HTML**：
+### 为什么需要预渲染
 
-- 81 个页面各自的 `<title>` / `<meta description>` / OG 标签 / JSON-LD 结构化数据
-- 正文内容直接写进 HTML，不依赖 JS 执行
-- `404.html` 兜底页（root 留空，交给客户端渲染）
-- 填了域名后还会生成 `sitemap.xml` 和 `robots.txt`
+纯前端 SPA 对 SEO 几乎没有价值——搜索引擎抓取时正文由 JS 渲染，索引不到实际内容。因此 `npm run build` 的最后一步会执行 `scripts/prerender.mjs`，用 `react-dom/server` 把每个路由渲染成静态 HTML：
 
-构建流程：`tsc -b` → `vite build` → `node scripts/prerender.mjs`
+- 81 个页面各自输出 `<title>`、`<meta description>`、Open Graph 标签与 JSON-LD 结构化数据
+- 正文内容直接写入 HTML，不依赖客户端 JS
+- 生成 `404.html` 兜底页
+- 配置了站点域名时，额外生成 `sitemap.xml` 与 `robots.txt`
 
-### 客户端只在安全时才 hydrate
+构建链路：
 
-预渲染页面会带一个 `<meta name="prerender-path">` 标记自己是给哪个路由渲染的。
-`src/main.tsx` 只在标记与当前地址一致时调用 `hydrateRoot`，否则清空重渲染。
+```
+tsc -b  →  vite build  →  node scripts/prerender.mjs
+```
 
-这样即使服务器把未知路径兜底到了首页（`vite preview` 就是这么干的），也不会出现
-hydration 结构不匹配的报错。
+### 客户端只在安全的前提下 hydrate
 
-### 部署后要填域名
+预渲染页面带有 `<meta name="prerender-path">`，标记该 HTML 是为哪个路由生成的。`src/main.tsx` 仅在该标记与当前地址一致时才调用 `hydrateRoot`；不一致时清空容器后重新渲染。
 
-`site.config.json` 里的 `siteUrl` 默认是空的，此时**不生成** canonical 和 sitemap。
-拿到 Vercel 域名后填进去，重新构建一次：
+这样即使服务器把未知路径兜底到首页，也不会出现 hydration 结构不匹配的报错。
+
+### 站点域名：site.config.json
 
 ```json
-{ "siteUrl": "https://你的域名.vercel.app" }
+{ "siteUrl": "https://boardgame-tools.1600727279.workers.dev" }
 ```
 
-留空是故意的——填一个不存在的域名会让 canonical 指向无效地址，反而对 SEO 有害。
-
-## 本地验证预渲染结果
-
-`vite preview` 不做目录索引解析，直接访问 `/game/avalon`（不带斜杠）会落到 SPA 兜底。
-想本地验证静态产物，用：
-
-```bash
-npm run build
-npx serve dist
-```
-
-真实主机（Vercel / Netlify / nginx）都会把 `/game/avalon` 解析到 `/game/avalon/index.html`。
-`vercel.json` 里还写了一条显式 rewrite 兜底。
+`siteUrl` 为空时**不生成** canonical 与 sitemap。这是刻意设计——canonical 指向一个不存在的域名会被搜索引擎判定为无效信号，反而比不写更糟。更换域名后修改此文件并重新构建即可。
 
 ## 项目结构
 
 ```
 src/
-  data/games.ts          # 桌游数据集（核心资产，目前 80 款）
-  lib/types.ts           # Game / Mood / Experience 类型
+  data/games.ts          # 桌游数据集（核心资产，80 款）
+  lib/types.ts           # Game / Mood / Experience 类型定义
   lib/recommend.ts       # 推荐评分算法
   lib/router.tsx         # 零依赖前端路由
-  lib/meta.ts            # 标题/描述生成，客户端和服务端共用
+  lib/meta.ts            # 标题/描述生成，客户端与服务端共用
   components/Picker.tsx  # 条件选择器
   components/GameCard.tsx
   components/Library.tsx # 可搜索筛选的游戏库
   pages/GameDetail.tsx   # 游戏详情页
   App.tsx                # 路由分发
 scripts/
-  ssr-entry.tsx          # 给预渲染用的入口
+  ssr-entry.tsx          # 预渲染入口
   prerender.mjs          # 预渲染 + sitemap 生成
 site.config.json         # 站点域名配置
+wrangler.jsonc           # Cloudflare Workers 部署配置（生产环境使用）
+vercel.json              # Vercel 备用配置（当前未使用）
 tailwind.config.js       # 主题色 ink / felt / gold
-start-dev.bat            # 双击启动
+start-dev.bat            # Windows 双击启动
 ```
 
-## 推荐算法怎么工作
+## 推荐算法
 
-`recommend()` 分四步：
+`recommend()` 位于 `src/lib/recommend.ts`，分四步：
 
-1. **硬过滤**：人数在 `min-max` 内、游戏最大时长不超过可用时间、类型命中选中的心情。
-   类型是硬条件——选了「烧脑策略」就不会拿不相关的游戏来凑数。
-2. **人数契合**：命中 `best`（最佳人数）得 8 分，否则按距离最佳人数的间隔递减。
-3. **时间余量**：留出讲规则的时间，游戏控制在可用时长的 85% 以内最佳。
-4. **难度匹配**：新手 / 有老手带 / 全是老玩家 各有舒适难度区间，超出会明显扣分。
+1. **硬过滤**：人数落在 `min-max` 区间内、游戏最大时长不超过可用时间、类型命中所选心情。类型是硬条件——选了「烧脑策略」不会用不相关的游戏凑数。
+2. **人数契合**：命中 `best`（最佳人数）得 8 分，否则按与最佳人数的距离递减。
+3. **时间余量**：留出讲规则的时间，游戏时长控制在可用时长的 85% 以内为最佳。
+4. **难度匹配**：新手 / 有老手带 / 全是老玩家，各有对应的舒适难度区间，超出会明显扣分。
 
-想调推荐口味，只改 `src/lib/recommend.ts`。
+调整推荐口味只需修改这一个文件。
 
-## 加一款新桌游
+## 数据
 
-在 `src/data/games.ts` 里加一条：
+`src/data/games.ts` 收录 80 款中文圈常见桌游。每条记录的字段：
 
 ```ts
 {
-  id: "unique-id",
-  zh: "中文名", en: "English Name", year: 2020,
-  min: 2, max: 4, best: [3, 4],
-  minTime: 45, maxTime: 60,
-  weight: 2.5,                        // 1-5，越大越烧脑
-  cats: ["工人放置"],                  // 自由标签
-  moods: ["thinky", "family"],        // 必须是 types.ts 里定义的类型
-  note: "一句话说清这游戏适合什么场合。",
-},
+  id: "unique-id",              // URL 片段，对应 /game/<id>
+  zh: "中文名",
+  en: "English Name",
+  year: 2020,
+  min: 2, max: 4,               // 支持人数
+  best: [3, 4],                 // 最佳人数（玩家共识，非官方数值）
+  minTime: 45, maxTime: 60,     // 时长区间（分钟）
+  weight: 2.5,                  // 复杂度 1-5，参考 BGG weight
+  cats: ["工人放置"],            // 自由标签
+  moods: ["thinky", "family"],  // 必须取自 types.ts 中定义的类型
+  note: "一句话说明适合什么场合。",
+}
 ```
 
-重新 `npm run build` 后，推荐器、游戏库、详情页、sitemap 会全部自动带上它。
+数据的取值口径：
+
+- 人数与时长以出版方说明书为准，扩展与不同版本会有差异
+- 复杂度参考 BGG 的 weight，是玩家投票的平均值
+- `best` 是最佳人数，来自玩家共识而非官方数值
+
+**这份数据的准确性就是这个项目的价值所在。** 建议每款都对照 BGG 与中文版说明书核对一次，优先核对中文圈高频游玩的那些（阿瓦隆、璀璨宝石、卡坦岛、七大奇迹）。
+
+新增游戏只需在 `games.ts` 中追加一条记录，重新构建后推荐器、游戏库、详情页与 sitemap 会全部自动包含它。
+
+## 开发环境约束（Windows 智能应用控制）
+
+本项目初版的工具链版本受开发机环境限制，此处记录原因，避免后来者误升级导致构建失败。
+
+Windows 11 的**智能应用控制（Smart App Control）**按微软云端信誉判断程序能否运行，会拦截 npm 包中较新的、未签名的原生二进制，报错为 `An Application Control policy has blocked this file`。
+
+**该判定是动态的**：`oxlint` 的原生绑定曾先被放行、数小时后被拦截；`esbuild` 也出现过同一二进制在不同路径下结果不同的情况。因此「现在能跑」不代表以后能跑。
+
+本项目因此固定使用**不含原生二进制**的纯 JS 工具链：
+
+| 依赖 | 版本 | 说明 |
+| --- | --- | --- |
+| Vite | 7 | 使用 esbuild + rollup |
+| @vitejs/plugin-react | 5 | |
+| Tailwind CSS | 3.4 | 走 PostCSS，无原生模块 |
+| ESLint | 10 | 纯 JS |
+
+以下依赖**不可引入**，其原生二进制会被拦截：
+
+- `rolldown`（Vite 8 默认打包器）
+- `@tailwindcss/oxide`（Tailwind 4 原生引擎）
+- `lightningcss`
+- `oxlint` / `biome`（带原生绑定）
+
+在未启用智能应用控制的机器上开发时，可以自由升级依赖；升级后需同步更新本节内容。
 
 ## 部署
 
-### Vercel（推荐）
+生产环境部署在 **Cloudflare Workers**，推送到 `main` 分支后自动构建并发布。
 
-1. 推到 GitHub：
+- 平台配置与排障：[DEPLOY.md](DEPLOY.md)
+- 日常改动的标准流程：[WORKFLOW.md](WORKFLOW.md)
 
-   ```bash
-   git init
-   git add .
-   git commit -m "feat: 桌游推荐器"
-   git branch -M main
-   git remote add origin https://github.com/<你的用户名>/boardgame-tools.git
-   git push -u origin main
-   ```
+## 路线图
 
-2. <https://vercel.com> 用 GitHub 登录 → **Add New → Project** → 选仓库 → **Import**。
-3. 框架自动识别成 Vite，不用改配置，点 **Deploy**。
-4. 拿到域名后填进 `site.config.json` 的 `siteUrl`，重新 push 一次。
-5. 之后每次 `git push` 自动重新部署。
-
-Vercel 的构建机器是 Linux，**没有智能应用控制**，所以部署不受本机限制影响。
-
-### Cloudflare Pages
-
-构建命令 `npm run build`，输出目录 `dist`。
-
-## 本机环境限制（重要，别乱升级）
-
-这台电脑开启了 **Windows 智能应用控制（Smart App Control）**，它按微软云端信誉
-判断能不能运行程序，会直接拦截 npm 包里较新的未签名原生二进制。
-
-| 模块 | 状态 |
-| --- | --- |
-| esbuild | 放行 |
-| rollup (`@rollup/rollup-win32-x64-msvc`) | 放行 |
-| rolldown（Vite 8 用的） | **被拦截** |
-| `@tailwindcss/oxide`（Tailwind 4 用的） | **被拦截** |
-| lightningcss | **被拦截** |
-| oxlint | **被拦截**（注意：它一开始是放行的，几小时后被拦，判定会变） |
-
-所以本项目固定在下面这套组合，**都能跑**：
-
-- Vite **7**（esbuild + rollup）+ `@vitejs/plugin-react` **5**
-- Tailwind CSS **3.4**（走 PostCSS，纯 JS，没有原生模块）+ `postcss` + `autoprefixer`
-- ESLint（纯 JS，无原生模块）负责 lint —— 原来模板自带的 oxlint 被拦截后换掉了
-
-判断标准是：**这个包有没有原生二进制**。有原生模块的包随时可能被拦，
-所以这台机器上的原则是优先选纯 JS 的工具链。
-
-**不要**把 Vite 升到 8、也不要把 Tailwind 升到 4，否则会报
-`An Application Control policy has blocked this file`，服务器直接起不来。
-
-想用最新版工具只有两条路：关掉智能应用控制（设置 → 隐私和安全性 → Windows 安全中心
-→ 应用和浏览器控制 → 智能应用控制 → 关闭，**关闭后要重装 Windows 才能再打开**），
-或者继续用当前这套。
-
-## 关于数据
-
-`games.ts` 里的人数、时长、复杂度是按玩家习惯整理的近似值：
-
-- 人数与时长以出版方说明书为准，扩展和不同版本会有差异；
-- 复杂度参考 BGG 的 weight，是玩家投票的平均数；
-- `best`（最佳人数）是玩家共识，不是官方数值。
-
-**这份数据的准确性就是这个站的价值所在。** 建议每款都点开 BGG 核对一次，
-优先核对中文圈常玩的那些（阿瓦隆、璀璨宝石、卡坦岛、七大奇迹）。
-
-## 下一步可以加的东西
-
-- 计分器（针对热门游戏单独做，吃回访流量）
+- 计分器（针对热门游戏单独实现，可带来回访流量）
 - 随机分身份 / 抽队伍（阿瓦隆、狼人杀场景）
 - 按人数、时长细化详情页的筛选入口
+- 更细的长尾 SEO 页面

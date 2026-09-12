@@ -1,37 +1,31 @@
-# 部署上线指南
+# 部署与运维
 
-目标：拿到一个公网链接 `https://xxx.vercel.app`，手机能打开，能发给别人。
+面向维护者。日常改动的标准流程见 [WORKFLOW.md](WORKFLOW.md)，本文只涉及平台配置与排障。
 
-## 当前状态：已上线 ✅
+## 线上环境
 
-**网址：<https://boardgame-tools.1600727279.workers.dev>**
+| 项 | 值 |
+| --- | --- |
+| 平台 | Cloudflare Workers（静态资源模式） |
+| 地址 | <https://boardgame-tools.1600727279.workers.dev> |
+| 源码仓库 | <https://github.com/abwr1025/boardgame-tools> |
+| 生产分支 | `main` |
+| 触发方式 | 推送到 `main` 后自动构建，约 45 秒上线 |
 
-- 部署平台：**Cloudflare Workers**（静态资源模式）
-- 已打通 Git：`git push` 后约 45 秒自动重新部署
-- 81 个页面全部预渲染，`sitemap.xml` 81 条，`robots.txt` 指向 sitemap
-- 源码仓库：<https://github.com/abwr1025/boardgame-tools>（公开）
-- 本机 GitHub 凭据（`abwr1025`）可用，push 不会再问密码
+## 部署链路
 
-### 日常更新流程
-
-```powershell
-cd D:\CodexProjects\boardgame-tools
-# 改代码 / 加游戏
-npm run build     # 本地先确认没报错
-git add -A
-git commit -m "feat: 加了 5 款新游戏"
-git push          # 约 45 秒后线上自动更新
+```
+GitHub main 分支
+   ↓  云端 npm clean-install
+   ↓  云端 npm run build   （tsc -b → vite build → node scripts/prerender.mjs）
+   ↓  产出 dist/：168 个文件，含 81 个 HTML、静态资源、robots.txt、sitemap.xml
+   ↓  npx wrangler deploy   读取 wrangler.jsonc，将 dist/ 作为静态资源发布
+https://boardgame-tools.1600727279.workers.dev
 ```
 
----
+Cloudflare 的构建机为 Linux 环境，不受开发机 Windows 智能应用控制的限制。
 
-## 实际生效的部署配置（Cloudflare Workers）
-
-最初打算用 Vercel，后来因为注册卡在手机短信验证码（`+86` 号码收境外短信到达率很差），改用了 Cloudflare。
-Cloudflare 新版控制台默认把人引导到 **Workers** 而不是 Pages——两条路都能托管静态站，
-但配置方式不同，下面记录**实际跑通的那一套**。
-
-### 控制台里的设置
+## 控制台配置
 
 | 字段 | 值 |
 | --- | --- |
@@ -41,10 +35,16 @@ Cloudflare 新版控制台默认把人引导到 **Workers** 而不是 Pages—�
 | Deploy command | `npx wrangler deploy` |
 | Root directory | 留空（即仓库根目录） |
 
-### 仓库里的配套文件
+### 如何判断项目类型
 
-`wrangler.jsonc` —— **必须有**。没有它，`npx wrangler deploy` 不知道要发布什么，
-构建会停在 `Executing user deploy command` 之后失败。
+Cloudflare 新版控制台默认引导至 **Workers** 而非 Pages，两者都能托管静态站，但配置方式不同：
+
+- `Deploy command` 为 `npx wrangler deploy` → Workers 项目，**必须有 `wrangler.jsonc`**
+- 项目创建于 `Pages` 标签下 → Pages 项目，**不需要**任何配置文件
+
+## wrangler.jsonc
+
+**该文件为必需项。** 缺少它，`npx wrangler deploy` 无从得知要发布什么，构建会在 `Executing user deploy command` 之后失败。
 
 ```jsonc
 {
@@ -60,281 +60,84 @@ Cloudflare 新版控制台默认把人引导到 **Workers** 而不是 Pages—�
 
 | 配置项 | 作用 |
 | --- | --- |
-| `assets.directory` | 把 `dist/` 里的文件作为静态资源发布 |
-| `html_handling: auto-trailing-slash` | 让 `/game/avalon` 命中 `/game/avalon/index.html`，80 个详情页靠它 |
-| `not_found_handling: 404-page` | 找不到的路径返回 `dist/404.html` |
+| `name` | Worker 名称，需与控制台中的项目一致，否则会创建出第二个项目 |
+| `compatibility_date` | Workers 运行时行为版本，修改后需重新验证线上表现 |
+| `assets.directory` | 以 `dist/` 作为静态资源目录 |
+| `assets.html_handling` | `auto-trailing-slash`：`/game/avalon` 命中 `/game/avalon/index.html`，80 个详情页依赖此项 |
+| `assets.not_found_handling` | `404-page`：未匹配的路径返回 `dist/404.html` |
 
-### 这一步踩过的坑
+## Node 版本
 
-- **建出来的是 Worker，不是 Pages。** 判断方法：看 `Deploy command` 是不是 `npx wrangler deploy`。
-  是的话就走 Worker 路线，必须有 `wrangler.jsonc`；Pages 则不需要任何配置文件。
-- `engines` 原本写死 `22.x`，而 Cloudflare 构建机是 Node 24，每次构建都刷一行
-  `npm warn EBADENGINE Unsupported engine`。已放宽成 `>=20.19`。
-- **`workers.dev` 域名在国内访问不稳定。** 想让访问稳，建议绑自定义域名：
-  Worker 里 **Settings → Domains & Routes → Add custom domain**。
+Cloudflare 构建机默认使用 Node 24。`package.json` 中 `engines` 声明为 `>=20.19`，与构建机一致，不会再触发 `EBADENGINE` 警告。
 
----
+如需锁定具体版本，在控制台 **Settings → Build → Variables and Secrets** 中添加 `NODE_VERSION = 22`。
 
-## 已完成 · 建仓库 + 推送
+## 故障排查
 
-仓库在 <https://github.com/abwr1025/boardgame-tools>，32 个文件，`main` 分支与本地完全同步。
-
-以后你自己改了代码要推上去，只需要：
-
-```powershell
-cd D:\CodexProjects\boardgame-tools
-git add -A
-git commit -m "说明这次改了什么"
-git push
-```
-
----
-
-## 备选 A · Vercel（2026-09 起注册需手机验证码，国内号码常收不到）
-
-### 先说清楚「上传」到底在传什么
-
-你这个站构建完，就是 `dist/` 里的一堆**静态文件**：HTML、CSS、JS、图标。
-它不需要服务器程序、不需要数据库，任何人打开浏览器就能看——**前提是这些文件放在一台 24 小时开机的机器上**。
-
-你在本机跑 `npm run dev` 起的那个服务器，只有你自己能访问（`localhost` 就是「我自己这台电脑」的意思），
-关掉窗口就没了。所谓的「上传 / 部署」，就是**把 `dist/` 这堆文件送到一台常年在线的机器上，让它一直对外提供服务**。
-
-Vercel 这类平台就是干这个的。它对个人免费，因为它靠大厂带宽成本 + 付费用户赚钱。
-
-### 为什么用 Vercel，而不是自己买服务器
-
-- 不用买服务器、不用配 nginx、不用管 HTTPS 证书（自动签好）
-- 和 GitHub 打通：你 `git push` 一次，它自动重新构建、自动上线
-- 静态站没有带宽计费，免费额度对个人站绰绰有余
-
-### 具体步骤
-
-**① 用 GitHub 账号登录 Vercel**
-
-打开 <https://vercel.com> → 点 **Continue with GitHub** → 弹窗点 **Authorize**。
-
-这一步是在授权 Vercel **读取你的 GitHub 仓库**。它只能读，改不了你的代码。
-
-**② 选择要部署的仓库**
-
-进 <https://vercel.com/new>，列表里找到 `boardgame-tools` → 点 **Import**。
-
-如果列表是空的，点 **Adjust GitHub App Permissions**，把 `boardgame-tools` 勾上再回来。
-
-**③ 确认构建配置**（唯一需要动脑的一步）
-
-Vercel 会自动识别出这是 Vite 项目并把三项填好，你核对一下：
-
-| 字段 | 应该填 | 这行是干什么的 |
+| 现象 | 原因 | 处理 |
 | --- | --- | --- |
-| Framework Preset | `Vite` | 告诉 Vercel 用 Vite 的方式构建 |
-| Build Command | `npm run build` | **云端要执行的命令**，等价于你在本机敲的那条 |
-| Output Directory | `dist` | 构建产物在哪个文件夹，Vercel 把这个文件夹发布成网站 |
+| 构建停在 `Executing user deploy command` 之后失败 | 缺少 `wrangler.jsonc` | 确认该文件存在于仓库根目录 |
+| 部署成功但访问任意路径均为 404 | `assets.directory` 配置错误 | 确认其值为 `./dist` |
+| 直接访问 `/game/<id>` 返回 404 | `html_handling` 配置丢失 | 恢复为 `auto-trailing-slash` |
+| 出现 `npm warn EBADENGINE Unsupported engine` | 构建机 Node 版本与 `engines` 不符 | 放宽 `engines` 或设置 `NODE_VERSION` |
+| 本地 `ERR_CONNECTION_REFUSED` | 开发服务器已停止 | 重新执行 `npm run dev` 或双击 `start-dev.bat` |
+| 本地 `An Application Control policy has blocked this file` | 智能应用控制拦截了原生二进制 | 见 README「开发环境约束」，改用纯 JS 工具链 |
+| `git push` 连接超时或 `Connection was reset` | 未走系统代理 | 见下方「Git 代理」 |
 
-把这条链路搞明白，你以后换任何平台都不会懵：
+## Git 代理
 
-```
-你的代码（存在 GitHub 上）
-   ↓  云端自动执行 npm install    —— 装依赖
-   ↓  云端自动执行 npm run build  —— 构建 + 预渲染 81 个页面
-   ↓  产出 dist/ 文件夹
-   ↓  把 dist/ 的内容发布到 CDN
-https://xxx.vercel.app           ← 全世界可访问
-```
+在中国大陆网络环境下，直连 github.com 的 443 端口通常不可靠，表现为约 21 秒超时或 `Recv failure: Connection was reset`。若本机已运行代理（如 Clash，默认监听 127.0.0.1:7897），可为 git 单独配置代理：
 
-**④ 点 Deploy**
-
-等 1—2 分钟。你会看到构建日志滚动，输出和你在本机跑 `npm run build` 时**一模一样**
-（`✓ 38 modules transformed` → `预渲染完成：81 个页面`）。
-
-看到 🎉 和烟花动画就是成了，链接形如 `https://boardgame-tools-xxxx.vercel.app`。
-
-**⑤ 验证**
-
-用手机打开那个链接（或发到微信「文件传输助手」再点开）。**手机能正常看，才算真的上线了。**
-
-> **以后要收费的话注意**：Vercel 的 Hobby（免费）计划，条款上只允许**个人非商业用途**。
-> 这个站如果挂广告、卖 Pro 会员，严格讲得升 Pro（$20/月）。
-> 国内小团队常见做法是改用 **Cloudflare Pages**——免费版允许商业用途，且不限带宽。
-> 迁移成本很低：构建命令和输出目录填一样的，代码一行不用改。
-> 所以先用 Vercel 跑通，等真要收钱了再迁，不亏。
->
-> **注册时卡在手机验证码收不到？** 见下面的「路线 A′ · Cloudflare Pages」。
-> Vercel 的短信走国际通道，+86 号码经常收不到，别在那上面耗时间。
-
----
-
-## 备选 A 续 · 回填域名
-
-编辑 `D:\CodexProjects\boardgame-tools\site.config.json`：
-
-```json
-{ "siteUrl": "https://boardgame-tools-xxxx.vercel.app" }
+```bash
+git config --global http.https://github.com.proxy http://127.0.0.1:7897
 ```
 
-然后：
+该配置只影响 github.com，不改变其他远程仓库的行为。实测配置前 21 秒超时，配置后约 4 秒完成推送。
 
-```powershell
-cd D:\CodexProjects\boardgame-tools
-npm run build
-git add -A
-git commit -m "chore: 填写站点域名"
-git push
-```
+**该设置依赖代理进程处于运行状态**，代理退出后推送会再次失败。
 
-Vercel 自动重新部署，这次会多生成 `sitemap.xml` 和 canonical 标签。
-验证：打开 `https://你的域名/sitemap.xml`，能看到 81 条 URL 就对了。
+## 备选部署平台
 
-> 为什么不能留空？canonical 指向不存在的域名会被搜索引擎判为无效信号，比不写更糟。
+### Netlify Drop（用于快速验证）
 
----
+将 `npm run build` 产出的 `dist/` 目录打包为 zip，拖入 <https://app.netlify.com/drop>，无需注册即可获得临时地址。
 
-## 备选 B · Cloudflare Pages
+上传的是构建产物而非源码，不会与 Git 联动，每次更新都需重新构建并上传。适合临时分享或验证渲染效果，不适合长期维护。
 
-### 什么时候该用它
+### Cloudflare Pages
 
-- 注册 Vercel 时卡在手机短信验证码。`+86` 号码收境外短信到达率很差，很可能是收不到的
-- 以后要在站上挂广告、卖会员。Vercel 免费版条款不允许商业用途，Cloudflare Pages 免费版允许，且不限带宽
+控制台 **Workers & Pages → Create → Pages → Connect to Git**，配置如下：
 
-### 步骤
-
-**① 注册 / 登录**
-
-打开 <https://dash.cloudflare.com/sign-up>，用邮箱注册，或直接 **Sign up with GitHub**。
-**不需要手机号，没有短信验证。**
-
-**② 连 GitHub 仓库**
-
-控制台左侧 **Workers & Pages** → **Create** → 选 **Pages** 标签 → **Connect to Git**
-→ 授权 GitHub → 选中 `boardgame-tools` → **Begin setup**
-
-**③ 填构建配置**
-
-| 字段 | 填什么 |
+| 字段 | 值 |
 | --- | --- |
-| Project name | `boardgame-tools`，决定域名 `xxx.pages.dev` |
-| Production branch | `main` |
-| Framework preset | `Vite` |
 | Build command | `npm run build` |
 | Build output directory | `dist` |
+| 环境变量 | `NODE_VERSION = 22` |
 
-**④ 加一个环境变量（容易漏，漏了可能构建失败）**
+Pages 不需要 `wrangler.jsonc`；该文件的存在不会影响 Pages 的构建。
 
-展开 **Environment variables (advanced)**，加一条：
+### Vercel
 
-| Variable name | Value |
-| --- | --- |
-| `NODE_VERSION` | `22` |
+仓库中保留了 `vercel.json`，用于 `/game/:id` 的 rewrite。Vercel 侧配置为 Framework Preset `Vite`、Build Command `npm run build`、Output Directory `dist`。
 
-Cloudflare 的默认 Node 版本可能比项目要求的低。`package.json` 里写了 engines node 22.x，
-这里对齐一下，省得云端报 Node 版本不符。
+注意 Vercel Hobby 计划的条款限定为个人非商业用途，站点若涉及广告或付费需升级至 Pro 计划。
 
-**⑤ 点 Save and Deploy**
+> Vercel 注册流程要求手机短信验证。中国大陆号码接收境外短信的到达率较低，若收不到验证码，直接改用 Cloudflare 即可。
 
-等 1—2 分钟，看构建日志。成功后拿到 `https://boardgame-tools.pages.dev`。
+## 自定义域名
 
-之后每次 `git push` 都会自动重新部署，和 Vercel 一样。
+当前使用 `workers.dev` 子域名，该域名在中国大陆的访问稳定性一般。接入自有域名：
 
-### 和 Vercel 的差别
+1. 购买域名
+2. Cloudflare 控制台 → 目标 Worker → **Settings → Domains & Routes → Add → Custom domain**
+3. 按提示配置 DNS 解析，Cloudflare 会自动签发 HTTPS 证书
+4. 域名生效后更新 `site.config.json` 的 `siteUrl` 并重新构建，以生成正确的 canonical 与 sitemap
 
-- 不要手机号，注册门槛低
-- 免费版允许商业用途，不限带宽，国内访问速度通常也比 Vercel 好一些
-- 自定义域名同样免费，在 **Custom domains** 里加
+## 发布检查清单
 
----
-
-## 备选 C · Netlify Drop（60 秒，不用登录、不用注册）
-
-想先确认「传上去之后长什么样」再决定用哪个平台，就先走这条。
-
-**原理**：把**本机已经构建好的** `dist/` 文件夹（我打包成了 `dist-upload.zip`）直接传给 Netlify，
-它当场把文件挂到 CDN 上。因为文件是在本机构建好的，所以这条路**既不需要 GitHub、也不需要云端构建**。
-
-1. 打开 <https://app.netlify.com/drop>
-2. 把 `D:\CodexProjects\boardgame-tools\dist-upload.zip` 拖进页面中间那个虚线框
-3. 等十几秒，页面上直接出现 `https://xxxx.netlify.app`
-
-**和 Vercel 的区别**：这条路上传的是「**构建结果**」，不是「源代码」。
-所以 Netlify 不知道你的代码长什么样。你改了代码，必须在本机重新 `npm run build` 再拖一次。
-适合验证效果、临时发给朋友看；长期用还是走 Vercel（能自动更新）。
-
----
-
-## 三条红线（踩了要花时间修）
-
-### 1. 不要在这个项目里跑 `npm install` / `npm ci`
-
-这台电脑开着 **Windows 智能应用控制（Smart App Control）**，会把 npm 包里较新的未签名原生二进制拦掉。
-`esbuild.exe` 现在的放行状态是**按路径判定**的：装在这个路径下能跑，装到别处或重装一次就可能被拦。
-
-一旦被拦，`npm run dev` 会直接报 `An Application Control policy has blocked this file`，开发服务器起不来。
-
-**已经坏了怎么办** —— 从备份恢复：
-
-```powershell
-cd D:\CodexProjects\boardgame-tools
-Rename-Item node_modules node_modules_broken
-Expand-Archive D:\CodexArchive\boardgame-tools-node_modules.zip -DestinationPath .
-```
-
-备份是 26.8 MB 的完整 `node_modules` 快照（7151 个文件），放在 `D:\CodexArchive\`。
-
-**不影响部署**：Vercel / Netlify 的构建机是 Linux，没有智能应用控制，云端 `npm install` 完全正常。
-
-### 2. 不要升级 Vite 到 8、Tailwind 到 4
-
-Vite 8 用 rolldown，Tailwind 4 用 `@tailwindcss/oxide`，**两个都被拦截**。
-当前锁定的是唯一能跑的版本组合：Vite 7 + Tailwind 3.4（走 PostCSS，纯 JS 无原生模块）。
-
-### 3. 不要在 C 盘建项目
-
-所有项目放 `D:\CodexProjects\`，草稿放 `D:\CodexWork\`。
-C 盘只保留 `C:\Users\16007\.codex\AGENTS.md`（Codex 的配置文件，路径写死在 `$CODEX_HOME`，没法搬）。
-
----
-
-## 报错对照表
-
-| 看到这个 | 意思是 | 怎么办 |
-| --- | --- | --- |
-| `ERR_CONNECTION_REFUSED` | 本地开发服务器的黑窗口被关了 | 重新双击 `start-dev.bat` |
-| `An Application Control policy has blocked this file` | 智能应用控制拦了原生二进制 | 按「红线 1」从 zip 恢复 node_modules |
-| `! [rejected] main -> main (fetch first)` | 远端有本地没有的提交 | `git pull --rebase origin main` 再 push |
-| Vercel 部署成功但打开是 404 | 输出目录不对 | Settings → Build & Development → Output Directory 改成 `dist` |
-| Vercel 报 `No Output Directory named 'dist'` | 构建失败没产出 | 看部署日志里 `npm run build` 那段的报错 |
-| 页面能开但样式全乱 | CSS 没加载 | 检查 Output Directory 是不是被指到了 `dist/dist` |
-
----
-
-## 上线后检查清单
-
-- [ ] 首页能打开，选「4 人 / 60 分钟 / 聚会欢乐」出得来推荐
-- [ ] 随便点一个游戏进详情页，**按 F5 刷新**不 404
-- [ ] 把链接发到微信「文件传输助手」，手机上打开排版正常
-- [ ] `https://域名/sitemap.xml` 能打开，且是 81 条
-- [ ] `https://域名/robots.txt` 能打开
-- [ ] 提交到 [Google Search Console](https://search.google.com/search-console) 和 [Bing 站长工具](https://www.bing.com/webmasters)，把 sitemap 地址填进去
-
----
-
-## 想要自定义域名
-
-现在跑在 `boardgame-tools.1600727279.workers.dev` 上。这个域名**在国内访问不稳定**，
-想认真做站就绑一个自己的域名：
-
-1. 买域名（Cloudflare 自己卖，Namecheap、阿里云也行）
-2. Cloudflare 控制台 → 你的 Worker → **Settings → Domains & Routes → Add → Custom domain**
-3. 按提示改 DNS 解析，HTTPS 证书 Cloudflare 自动签
-
-**建议顺序**：先用 `workers.dev` 把内容和数据打磨好，等确实有人访问了再花钱买域名。
-域名一年几十块不贵，但在你还没有流量之前，它不会带来任何变化。
-
----
-
-## 最后一句实话
-
-域名和部署只是发令枪，**这个站真正的价值在那 80 款桌游数据的准确性**。
-上线之后每周做一件事：挑 10 款中文圈常玩的（阿瓦隆、璀璨宝石、卡坦岛、七大奇迹……），
-点开 BGG 核对人数和时长，改数据、提交。三个月后这个库就是中文圈里最好用的桌游选型表之一，
-那时候流量才真正开始来。工具站拼的从来不是代码，是数据和内容。
+- [ ] `npm run build` 无报错，输出「预渲染完成：81 个页面」
+- [ ] `npm run lint` 退出码为 0
+- [ ] 线上 `/` 可访问且标题正确
+- [ ] 线上 `/game/<id>` 可访问，刷新不 404
+- [ ] 线上 `/sitemap.xml` 条数与页面总数一致
+- [ ] 移动端打开排版正常
