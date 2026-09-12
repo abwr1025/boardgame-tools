@@ -2,19 +2,82 @@
 
 目标：拿到一个公网链接 `https://xxx.vercel.app`，手机能打开，能发给别人。
 
-## 当前状态（我已经做完的）
+## 当前状态：已上线 ✅
 
-- Git 仓库已初始化，主分支 `main`
-- **GitHub 仓库已创建并推送完成**：<https://github.com/abwr1025/boardgame-tools>（公开，32 个文件）
-- 本机 GitHub 凭据（`abwr1025`）可用，之后 push 不会再问密码
-- 构建验证通过：`npm run build` → 81 个页面预渲染成功
-- 打包好的静态站：`dist-upload.zip`（路线 B 直接用它）
+**网址：<https://boardgame-tools.1600727279.workers.dev>**
 
-**只剩第 3 步（Vercel 导入）和第 4 步（回填域名）要做。**
+- 部署平台：**Cloudflare Workers**（静态资源模式）
+- 已打通 Git：`git push` 后约 45 秒自动重新部署
+- 81 个页面全部预渲染，`sitemap.xml` 81 条，`robots.txt` 指向 sitemap
+- 源码仓库：<https://github.com/abwr1025/boardgame-tools>（公开）
+- 本机 GitHub 凭据（`abwr1025`）可用，push 不会再问密码
+
+### 日常更新流程
+
+```powershell
+cd D:\CodexProjects\boardgame-tools
+# 改代码 / 加游戏
+npm run build     # 本地先确认没报错
+git add -A
+git commit -m "feat: 加了 5 款新游戏"
+git push          # 约 45 秒后线上自动更新
+```
 
 ---
 
-## 第 1、2 步 · 建仓库 + 推送 ✅ 已完成
+## 实际生效的部署配置（Cloudflare Workers）
+
+最初打算用 Vercel，后来因为注册卡在手机短信验证码（`+86` 号码收境外短信到达率很差），改用了 Cloudflare。
+Cloudflare 新版控制台默认把人引导到 **Workers** 而不是 Pages——两条路都能托管静态站，
+但配置方式不同，下面记录**实际跑通的那一套**。
+
+### 控制台里的设置
+
+| 字段 | 值 |
+| --- | --- |
+| 仓库 | `abwr1025/boardgame-tools` |
+| Production branch | `main` |
+| Build command | `npm run build` |
+| Deploy command | `npx wrangler deploy` |
+| Root directory | 留空（即仓库根目录） |
+
+### 仓库里的配套文件
+
+`wrangler.jsonc` —— **必须有**。没有它，`npx wrangler deploy` 不知道要发布什么，
+构建会停在 `Executing user deploy command` 之后失败。
+
+```jsonc
+{
+  "name": "boardgame-tools",
+  "compatibility_date": "2026-09-12",
+  "assets": {
+    "directory": "./dist",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  }
+}
+```
+
+| 配置项 | 作用 |
+| --- | --- |
+| `assets.directory` | 把 `dist/` 里的文件作为静态资源发布 |
+| `html_handling: auto-trailing-slash` | 让 `/game/avalon` 命中 `/game/avalon/index.html`，80 个详情页靠它 |
+| `not_found_handling: 404-page` | 找不到的路径返回 `dist/404.html` |
+
+### 这一步踩过的坑
+
+- **建出来的是 Worker，不是 Pages。** 判断方法：看 `Deploy command` 是不是 `npx wrangler deploy`。
+  是的话就走 Worker 路线，必须有 `wrangler.jsonc`；Pages 则不需要任何配置文件。
+- `engines` 原本写死 `22.x`，而 Cloudflare 构建机是 Node 24，每次构建都刷一行
+  `npm warn EBADENGINE Unsupported engine`。已放宽成 `>=20.19`。
+- **`workers.dev` 域名在国内访问不稳定。** 想让访问稳，建议绑自定义域名：
+  Worker 里 **Settings → Domains & Routes → Add custom domain**。
+
+---
+
+## 已完成 · 建仓库 + 推送
+
+## 已完成 · 建仓库 + 推送
 
 仓库在 <https://github.com/abwr1025/boardgame-tools>，32 个文件，`main` 分支与本地完全同步。
 
@@ -29,7 +92,7 @@ git push
 
 ---
 
-## 第 3 步 · 把网站上传到 Vercel（约 5 分钟）
+## 备选 A · Vercel（2026-09 起注册需手机验证码，国内号码常收不到）
 
 ### 先说清楚「上传」到底在传什么
 
@@ -104,7 +167,7 @@ https://xxx.vercel.app           ← 全世界可访问
 
 ---
 
-## 第 4 步 · 回填域名（让搜索引擎能收录）
+## 备选 A 续 · 回填域名
 
 编辑 `D:\CodexProjects\boardgame-tools\site.config.json`：
 
@@ -129,7 +192,7 @@ Vercel 自动重新部署，这次会多生成 `sitemap.xml` 和 canonical 标�
 
 ---
 
-## 路线 A′ · Cloudflare Pages（Vercel 卡住时用这个）
+## 备选 B · Cloudflare Pages
 
 ### 什么时候该用它
 
@@ -183,7 +246,7 @@ Cloudflare 的默认 Node 版本可能比项目要求的低。`package.json` 里
 
 ---
 
-## 路线 B · 60 秒拿到链接（不用登录、不用注册）
+## 备选 C · Netlify Drop（60 秒，不用登录、不用注册）
 
 想先确认「传上去之后长什么样」再决定用哪个平台，就先走这条。
 
