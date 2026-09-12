@@ -58,8 +58,18 @@ tsc -b  →  vite build  →  node scripts/prerender.mjs
 ### 站点域名：site.config.json
 
 ```json
-{ "siteUrl": "https://boardgame-tools.1600727279.workers.dev" }
+{
+  "siteUrl": "https://boardgame-tools.1600727279.workers.dev",
+  "repoUrl": "https://github.com/abwr1025/boardgame-tools",
+  "feedbackUrl": "https://github.com/abwr1025/boardgame-tools/issues/new"
+}
 ```
+
+| 字段 | 用途 |
+| --- | --- |
+| `siteUrl` | 生成 canonical 与 sitemap，留空则跳过 |
+| `repoUrl` | 页脚的源码仓库链接 |
+| `feedbackUrl` | 数据纠错入口 |
 
 `siteUrl` 为空时**不生成** canonical 与 sitemap。这是刻意设计——canonical 指向一个不存在的域名会被搜索引擎判定为无效信号，反而比不写更糟。更换域名后修改此文件并重新构建即可。
 
@@ -115,6 +125,7 @@ start-dev.bat            # Windows 双击启动
   cats: ["工人放置"],            // 自由标签
   moods: ["thinky", "family"],  // 必须取自 types.ts 中定义的类型
   note: "一句话说明适合什么场合。",
+  bga: "azul",                  // 可选：Board Game Arena 的 slug
 }
 ```
 
@@ -127,6 +138,22 @@ start-dev.bat            # Windows 双击启动
 **这份数据的准确性就是这个项目的价值所在。** 建议每款都对照 BGG 与中文版说明书核对一次，优先核对中文圈高频游玩的那些（阿瓦隆、璀璨宝石、卡坦岛、七大奇迹）。
 
 新增游戏只需在 `games.ts` 中追加一条记录，重新构建后推荐器、游戏库、详情页与 sitemap 会全部自动包含它。
+
+### 在线游玩入口
+
+`Game.bga` 是 **Board Game Arena** 的游戏 slug，填写后详情页会出现「在线玩」按钮，链接为
+`https://boardgamearena.com/gamepanel?game=<slug>`。
+
+**填写前必须确认该游戏确实存在于 BGA**，否则 slug 会指向另一款游戏。核对方式：
+打开 <https://boardgamearena.com/gamelist> 搜索游戏英文名，从页面数据中取得其 slug。
+
+当前 80 款中有 43 款已收录 BGA 入口。其余游戏没有填写，多为出版方授权限制（阿瓦隆、行动代号、
+三国杀、幽港迷城等均未上 BGA）。这些游戏的详情页会给出去 Tabletopia 与 Steam 搜索的入口作为兜底。
+
+### 数据纠错
+
+站内所有介绍与数值都来自玩家整理。首页页脚与每款游戏的详情页都提供了纠错入口，
+指向 `site.config.json` 的 `feedbackUrl`（当前是 GitHub Issues）。修改该配置即可更换反馈渠道。
 
 ## 开发环境约束（Windows 智能应用控制）
 

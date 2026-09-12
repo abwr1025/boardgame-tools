@@ -1,6 +1,8 @@
 import { GameCard } from "../components/GameCard";
 import { GAMES } from "../data/games";
 import { Link } from "../lib/router";
+import { SITE } from "../lib/site";
+import { directPlayLinks, searchPlayLinks } from "../lib/play";
 import type { Game } from "../lib/types";
 import { MOOD_LABEL } from "../lib/types";
 
@@ -30,6 +32,8 @@ function relatedGames(game: Game, limit = 3): Game[] {
 
 export function GameDetail({ game }: { game: Game }) {
   const related = relatedGames(game);
+  const direct = directPlayLinks(game);
+  const search = searchPlayLinks(game);
 
   return (
     <div className="flex flex-col gap-10 pb-20">
@@ -53,6 +57,19 @@ export function GameDetail({ game }: { game: Game }) {
           {game.year} 年
         </p>
         <p className="max-w-3xl text-lg leading-relaxed text-slate-300">{game.note}</p>
+        <p className="text-sm text-slate-500">
+          这段介绍和下方的数据都由玩家整理，难免有出入。
+          {SITE.feedbackUrl ? (
+            <a
+              href={SITE.feedbackUrl}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="ml-1 underline decoration-dotted hover:text-felt-400"
+            >
+              发现错误欢迎指出
+            </a>
+          ) : null}
+        </p>
         <div className="flex flex-wrap gap-2">
           {game.cats.map((c) => (
             <span key={c} className="rounded-full bg-ink-700/60 px-3 py-1 text-xs text-slate-300">
@@ -61,6 +78,50 @@ export function GameDetail({ game }: { game: Game }) {
           ))}
         </div>
       </header>
+
+      <section className="rounded-2xl border border-felt-500/30 bg-felt-500/[0.06] p-6">
+        <h2 className="text-lg font-semibold text-white">在线玩</h2>
+        {direct.length > 0 ? (
+          <>
+            <p className="mt-2 text-sm leading-relaxed text-slate-400">
+              这款游戏在 Board Game Arena 上有官方实现，注册后浏览器直接开局，免费。
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              {direct.map((l) => (
+                <a
+                  key={l.url}
+                  href={l.url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="rounded-full bg-felt-500 px-5 py-2 text-sm font-medium text-ink-950 transition-colors hover:bg-felt-400"
+                >
+                  {l.label} 开局 →
+                </a>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="mt-2 text-sm leading-relaxed text-slate-400">
+              这款游戏暂时没有能直接开局的在线版本——Board Game Arena 未收录，多为出版方授权限制。
+              下面两个平台可能有数字版或第三方实现：
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              {search.map((l) => (
+                <a
+                  key={l.url}
+                  href={l.url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="rounded-full border border-ink-600 px-5 py-2 text-sm text-slate-300 transition-colors hover:border-felt-500/60 hover:text-felt-400"
+                >
+                  在 {l.label} 找
+                </a>
+              ))}
+            </div>
+          </>
+        )}
+      </section>
 
       <section>
         <h2 className="mb-4 text-sm font-medium tracking-wide text-slate-500 uppercase">基本信息</h2>
@@ -134,15 +195,25 @@ export function GameDetail({ game }: { game: Game }) {
       ) : null}
 
       <footer className="text-xs text-slate-500">
-        数据为玩家整理，人数与时长以出版方说明书为准。
+        数据为玩家整理，人数与时长以出版方说明书为准，欢迎指正。
         <a
-          href={`https://boardgamegeek.com/geeksearch.php?action=search&q=${encodeURIComponent(game.en)}`}
+          href={"https://boardgamegeek.com/geeksearch.php?action=search&q=" + encodeURIComponent(game.en)}
           target="_blank"
           rel="noreferrer noopener"
           className="ml-2 underline decoration-dotted hover:text-felt-400"
         >
           在 BGG 核对这款游戏
         </a>
+        {SITE.feedbackUrl ? (
+          <a
+            href={SITE.feedbackUrl}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="ml-2 underline decoration-dotted hover:text-felt-400"
+          >
+            提交更正
+          </a>
+        ) : null}
       </footer>
     </div>
   );

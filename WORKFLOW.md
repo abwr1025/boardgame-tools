@@ -207,6 +207,7 @@ git push
 
 - [ ] `id` 唯一，仅使用小写字母、数字和连字符（会直接成为 URL 片段）
 - [ ] `moods` 的取值来自 `src/lib/types.ts` 中的定义
+- [ ] 填写 `bga` 前已确认该游戏存在于 <https://boardgamearena.com/gamelist>，**填错会指向别的游戏**
 - [ ] `min <= best` 中的每个值 `<= max`
 - [ ] 构建后页面总数正确增加
 - [ ] 详情页可以打开，sitemap 条数同步

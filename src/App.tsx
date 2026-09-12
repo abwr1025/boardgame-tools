@@ -5,6 +5,7 @@ import { Picker } from "./components/Picker";
 import { GAMES } from "./data/games";
 import { metaForPath } from "./lib/meta";
 import { Link, usePathname } from "./lib/router";
+import { SITE } from "./lib/site";
 import { countMatches, recommend, type Query } from "./lib/recommend";
 import { MOOD_LABEL } from "./lib/types";
 import { GameDetail } from "./pages/GameDetail";
@@ -161,6 +162,39 @@ function Home() {
         </div>
         <Library />
       </section>
+
+      <footer className="border-t border-ink-700/60 py-8 text-xs text-slate-500">
+        <p>
+          站内的人数、时长、复杂度都由玩家整理，是近似值，难免有出入。
+          {SITE.feedbackUrl ? (
+            <>
+              <a
+                href={SITE.feedbackUrl}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="underline decoration-dotted hover:text-felt-400"
+              >
+                发现错误欢迎指出
+              </a>
+              ，确认后会改。
+            </>
+          ) : null}
+        </p>
+        {SITE.repoUrl ? (
+          <p className="mt-3">
+            项目源码与数据都在
+            <a
+              href={SITE.repoUrl}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="mx-1 underline decoration-dotted hover:text-felt-400"
+            >
+              GitHub
+            </a>
+            上，可以直接提 issue 或 PR。
+          </p>
+        ) : null}
+      </footer>
     </>
   );
 }

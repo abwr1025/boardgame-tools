@@ -40,6 +40,7 @@ export function GameCard({ game, reasons, highlight }: { game: Game; reasons?: s
         <Pill>{fmtTime(game)}</Pill>
         <Pill>难度 {game.weight.toFixed(1)}</Pill>
         <Pill tone="gold">最佳 {game.best.join("/")} 人</Pill>
+        {game.bga ? <Pill tone="play">可在线玩</Pill> : null}
       </div>
 
       <p className="text-sm leading-relaxed text-slate-400">{game.note}</p>
@@ -72,14 +73,14 @@ export function GameCard({ game, reasons, highlight }: { game: Game; reasons?: s
   );
 }
 
-function Pill({ children, tone }: { children: React.ReactNode; tone?: "gold" }) {
+function Pill({ children, tone }: { children: React.ReactNode; tone?: "gold" | "play" }) {
+  const cls =
+    tone === "gold"
+      ? "bg-gold-400/15 text-gold-400"
+      : tone === "play"
+        ? "bg-felt-500/15 text-felt-400"
+        : "bg-ink-700/60 text-slate-300";
   return (
-    <span
-      className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-        tone === "gold" ? "bg-gold-400/15 text-gold-400" : "bg-ink-700/60 text-slate-300"
-      }`}
-    >
-      {children}
-    </span>
+    <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${cls}`}>{children}</span>
   );
 }

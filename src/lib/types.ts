@@ -22,6 +22,11 @@ export interface Game {
   /** 复杂度 1-5，越大越烧脑 */
   weight: number;
   cats: string[];
+  /**
+   * Board Game Arena 的游戏 slug，例如 "azul"。
+   * 仅在该游戏确实存在于 BGA 目录时填写，链接由 src/lib/play.ts 生成。
+   */
+  bga?: string;
   moods: Mood[];
   note: string;
 }
