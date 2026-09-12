@@ -29,17 +29,77 @@ git push
 
 ---
 
-## 第 3 步 · Vercel 导入（约 2 分钟）
+## 第 3 步 · 把网站上传到 Vercel（约 5 分钟）
 
-1. 打开 <https://vercel.com> → **Continue with GitHub** → 授权
-2. 进入 <https://vercel.com/new>
-3. 在仓库列表里找到 `boardgame-tools` → **Import**
-4. 配置页确认这三项（一般都是自动填好的）：
-   - Framework Preset: `Vite`
-   - Build Command: `npm run build`
-   - Output Directory: `dist`
-5. 点 **Deploy**，等 1—2 分钟
-6. 拿到链接，形如 `https://boardgame-tools-xxxx.vercel.app`
+### 先说清楚「上传」到底在传什么
+
+你这个站构建完，就是 `dist/` 里的一堆**静态文件**：HTML、CSS、JS、图标。
+它不需要服务器程序、不需要数据库，任何人打开浏览器就能看——**前提是这些文件放在一台 24 小时开机的机器上**。
+
+你在本机跑 `npm run dev` 起的那个服务器，只有你自己能访问（`localhost` 就是「我自己这台电脑」的意思），
+关掉窗口就没了。所谓的「上传 / 部署」，就是**把 `dist/` 这堆文件送到一台常年在线的机器上，让它一直对外提供服务**。
+
+Vercel 这类平台就是干这个的。它对个人免费，因为它靠大厂带宽成本 + 付费用户赚钱。
+
+### 为什么用 Vercel，而不是自己买服务器
+
+- 不用买服务器、不用配 nginx、不用管 HTTPS 证书（自动签好）
+- 和 GitHub 打通：你 `git push` 一次，它自动重新构建、自动上线
+- 静态站没有带宽计费，免费额度对个人站绰绰有余
+
+### 具体步骤
+
+**① 用 GitHub 账号登录 Vercel**
+
+打开 <https://vercel.com> → 点 **Continue with GitHub** → 弹窗点 **Authorize**。
+
+这一步是在授权 Vercel **读取你的 GitHub 仓库**。它只能读，改不了你的代码。
+
+**② 选择要部署的仓库**
+
+进 <https://vercel.com/new>，列表里找到 `boardgame-tools` → 点 **Import**。
+
+如果列表是空的，点 **Adjust GitHub App Permissions**，把 `boardgame-tools` 勾上再回来。
+
+**③ 确认构建配置**（唯一需要动脑的一步）
+
+Vercel 会自动识别出这是 Vite 项目并把三项填好，你核对一下：
+
+| 字段 | 应该填 | 这行是干什么的 |
+| --- | --- | --- |
+| Framework Preset | `Vite` | 告诉 Vercel 用 Vite 的方式构建 |
+| Build Command | `npm run build` | **云端要执行的命令**，等价于你在本机敲的那条 |
+| Output Directory | `dist` | 构建产物在哪个文件夹，Vercel 把这个文件夹发布成网站 |
+
+把这条链路搞明白，你以后换任何平台都不会懵：
+
+```
+你的代码（存在 GitHub 上）
+   ↓  云端自动执行 npm install    —— 装依赖
+   ↓  云端自动执行 npm run build  —— 构建 + 预渲染 81 个页面
+   ↓  产出 dist/ 文件夹
+   ↓  把 dist/ 的内容发布到 CDN
+https://xxx.vercel.app           ← 全世界可访问
+```
+
+**④ 点 Deploy**
+
+等 1—2 分钟。你会看到构建日志滚动，输出和你在本机跑 `npm run build` 时**一模一样**
+（`✓ 38 modules transformed` → `预渲染完成：81 个页面`）。
+
+看到 🎉 和烟花动画就是成了，链接形如 `https://boardgame-tools-xxxx.vercel.app`。
+
+**⑤ 验证**
+
+用手机打开那个链接（或发到微信「文件传输助手」再点开）。**手机能正常看，才算真的上线了。**
+
+> **以后要收费的话注意**：Vercel 的 Hobby（免费）计划，条款上只允许**个人非商业用途**。
+> 这个站如果挂广告、卖 Pro 会员，严格讲得升 Pro（$20/月）。
+> 国内小团队常见做法是改用 **Cloudflare Pages**——免费版允许商业用途，且不限带宽。
+> 迁移成本很低：构建命令和输出目录填一样的，代码一行不用改。
+> 所以先用 Vercel 跑通，等真要收钱了再迁，不亏。
+
+---
 
 ## 第 4 步 · 回填域名（让搜索引擎能收录）
 
@@ -66,15 +126,20 @@ Vercel 自动重新部署，这次会多生成 `sitemap.xml` 和 canonical 标�
 
 ---
 
-## 路线 B · 60 秒拿到链接（不用账号）
+## 路线 B · 60 秒拿到链接（不用登录、不用注册）
 
-只想先看看线上长什么样、或者发给朋友看：
+想先确认「传上去之后长什么样」再决定用哪个平台，就先走这条。
+
+**原理**：把**本机已经构建好的** `dist/` 文件夹（我打包成了 `dist-netlify-drop.zip`）直接传给 Netlify，
+它当场把文件挂到 CDN 上。因为文件是在本机构建好的，所以这条路**既不需要 GitHub、也不需要云端构建**。
 
 1. 打开 <https://app.netlify.com/drop>
-2. 把 `D:\CodexProjects\boardgame-tools\dist-netlify-drop.zip` 拖进去
-3. 立刻得到 `https://xxxx.netlify.app`
+2. 把 `D:\CodexProjects\boardgame-tools\dist-netlify-drop.zip` 拖进页面中间那个虚线框
+3. 等十几秒，页面上直接出现 `https://xxxx.netlify.app`
 
-缺点：没绑定 Git，改了代码要重新拖。适合先看效果，长期还是走 Vercel。
+**和 Vercel 的区别**：这条路上传的是「**构建结果**」，不是「源代码」。
+所以 Netlify 不知道你的代码长什么样。你改了代码，必须在本机重新 `npm run build` 再拖一次。
+适合验证效果、临时发给朋友看；长期用还是走 Vercel（能自动更新）。
 
 ---
 
