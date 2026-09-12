@@ -25,4 +25,4 @@ dist-ssr
 .ssr
 
 # 部署用的静态站压缩包（构建产物）
-*-netlify-drop.zip
+dist-upload.zip

@@ -8,7 +8,7 @@
 - **GitHub 仓库已创建并推送完成**：<https://github.com/abwr1025/boardgame-tools>（公开，32 个文件）
 - 本机 GitHub 凭据（`abwr1025`）可用，之后 push 不会再问密码
 - 构建验证通过：`npm run build` → 81 个页面预渲染成功
-- 打包好的静态站：`dist-netlify-drop.zip`（路线 B 直接用它）
+- 打包好的静态站：`dist-upload.zip`（路线 B 直接用它）
 
 **只剩第 3 步（Vercel 导入）和第 4 步（回填域名）要做。**
 
@@ -187,11 +187,11 @@ Cloudflare 的默认 Node 版本可能比项目要求的低。`package.json` 里
 
 想先确认「传上去之后长什么样」再决定用哪个平台，就先走这条。
 
-**原理**：把**本机已经构建好的** `dist/` 文件夹（我打包成了 `dist-netlify-drop.zip`）直接传给 Netlify，
+**原理**：把**本机已经构建好的** `dist/` 文件夹（我打包成了 `dist-upload.zip`）直接传给 Netlify，
 它当场把文件挂到 CDN 上。因为文件是在本机构建好的，所以这条路**既不需要 GitHub、也不需要云端构建**。
 
 1. 打开 <https://app.netlify.com/drop>
-2. 把 `D:\CodexProjects\boardgame-tools\dist-netlify-drop.zip` 拖进页面中间那个虚线框
+2. 把 `D:\CodexProjects\boardgame-tools\dist-upload.zip` 拖进页面中间那个虚线框
 3. 等十几秒，页面上直接出现 `https://xxxx.netlify.app`
 
 **和 Vercel 的区别**：这条路上传的是「**构建结果**」，不是「源代码」。
