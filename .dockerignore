@@ -1,0 +1,12 @@
+node_modules
+dist
+dist-upload.zip
+.git
+.gitignore
+.gitattributes
+.vercel
+.wrangler
+deploy
+*.md
+*.log
+start-dev.bat

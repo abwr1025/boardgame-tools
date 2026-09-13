@@ -133,6 +133,23 @@ Pages 不需要 `wrangler.jsonc`；该文件的存在不会影响 Pages 的构�
 3. 按提示配置 DNS 解析，Cloudflare 会自动签发 HTTPS 证书
 4. 域名生效后更新 `site.config.json` 的 `siteUrl` 并重新构建，以生成正确的 canonical 与 sitemap
 
+## Docker 本地自托管
+
+`Dockerfile` 为两阶段构建：`node:22-alpine` 执行 `npm run build`（`tsc` + `vite build` + `scripts/prerender.mjs`），产物 `dist/` 再复制到 `nginx:alpine`。
+
+```powershell
+docker compose -f deploy\docker-compose.yml up -d --build
+docker compose -f deploy\docker-compose.yml logs -f web
+docker compose -f deploy\docker-compose.yml down
+```
+
+访问地址为 `http://127.0.0.1:8081`。
+
+注意事项：
+
+- 该容器用于本地预览与自托管。线上仍按本文件前述流程部署到 Cloudflare Workers，两者产物同为 `dist` 目录
+- `.dockerignore` 排除了 `node_modules`、`dist` 和部署压缩包，构建上下文只包含源码
+- `scripts/` 目录不能加入 `.dockerignore`，`npm run build` 依赖其中的预渲染脚本，缺少会导致构建报 `MODULE_NOT_FOUND`
 ## 发布检查清单
 
 - [ ] `npm run build` 无报错，输出「预渲染完成：81 个页面」
